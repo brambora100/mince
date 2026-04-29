@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detektor vzácných mincí</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f0f0f0; margin: 0; padding: 20px; }
+        #video-container { position: relative; width: 100%; max-width: 400px; margin: auto; }
+        video { width: 100%; border-radius: 15px; background: #000; }
+        .overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                    border: 2px dashed #fff; width: 200px; height: 200px; pointer-events: none; }
+        button { background: #007bff; color: white; border: none; padding: 15px 30px; 
+                 border-radius: 30px; font-size: 16px; margin-top: 20px; cursor: pointer; }
+        #vysledek { margin-top: 20px; padding: 15px; border-radius: 10px; display: none; }
+        .vzacna { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .bezna { background: #e2e3e5; border: 1px solid #d6d8db; color: #383d41; }
+    </style>
+</head>
+<body>
+
+    <h2>Identifikátor českých mincí</h2>
+    <p>Umístěte rok mince do čtverce a vyfoťte ji.</p>
+
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline></video>
+        <div class="overlay"></div>
+    </div>
+
+    <button onclick="analyzujMinci()">Analyzovat minci</button>
+
+    <div id="vysledek"></div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const vysledekDiv = document.getElementById('vysledek');
+
+        // Přístup ke kameře
+        async function setupCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            video.srcObject = stream;
+        }
+
+        function analyzujMinci() {
+            vysledekDiv.style.display = "block";
+            vysledekDiv.innerHTML = "<em>Probíhá analýza obrazu...</em>";
+
+            // ZDE BY NÁSLEDOVALA LOGIKA PRO OCR (Tesseract.js)
+            // Pro ukázku simulujeme výsledek:
+            setTimeout(() => {
+                const simulovanyRok = 1993;
+                const simulovanaHodnota = 10;
+
+                if (simulovanaHodnota === 10 && simulovanyRok === 1993) {
+                    vysledekDiv.className = "vzacna";
+                    vysledekDiv.innerHTML = "<strong>POZOR!</strong> Nalezena 10 Kč (1993). Pokud má malé 'Kč', může mít vysokou hodnotu!";
+                } else {
+                    vysledekDiv.className = "bezna";
+                    vysledekDiv.innerHTML = `Identifikována běžná ${simulovanaHodnota} Kč, ročník ${simulovanyRok}.`;
+                }
+            }, 1500);
+        }
+
+        setupCamera();
+    </script>
+</body>
+</html>
