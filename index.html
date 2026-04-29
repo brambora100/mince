@@ -3,65 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detektor vzácných mincí</title>
+    <title>Skener vzácných českých mincí</title>
+    <!-- Načtení knihovny pro rozpoznávání textu -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f0f0f0; margin: 0; padding: 20px; }
-        #video-container { position: relative; width: 100%; max-width: 400px; margin: auto; }
-        video { width: 100%; border-radius: 15px; background: #000; }
-        .overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-                    border: 2px dashed #fff; width: 200px; height: 200px; pointer-events: none; }
-        button { background: #007bff; color: white; border: none; padding: 15px 30px; 
-                 border-radius: 30px; font-size: 16px; margin-top: 20px; cursor: pointer; }
-        #vysledek { margin-top: 20px; padding: 15px; border-radius: 10px; display: none; }
-        .vzacna { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
-        .bezna { background: #e2e3e5; border: 1px solid #d6d8db; color: #383d41; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #1a1a1a; color: white; margin: 0; padding: 20px; }
+        #video-container { position: relative; width: 100%; max-width: 500px; margin: 20px auto; border-radius: 20px; overflow: hidden; border: 4px solid #333; }
+        video { width: 100%; display: block; }
+        .scanner-line { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 0, 0.5); box-shadow: 0 0 10px #0f0; animation: scan 2s infinite; display: none; }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+        button { background: #e67e22; color: white; border: none; padding: 15px 30px; border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; width: 100%; max-width: 300px; }
+        button:disabled { background: #555; }
+        #vysledek { margin-top: 25px; padding: 20px; border-radius: 15px; font-size: 1.1em; line-height: 1.5; min-height: 50px; }
+        .vzacna { background: #27ae60; border: 2px solid #2ecc71; animation: blink 1s infinite alternate; }
+        .bezna { background: #34495e; border: 2px solid #2c3e50; }
+        @keyframes blink { from { opacity: 1; } to { opacity: 0.8; } }
+        canvas { display: none; }
     </style>
 </head>
 <body>
 
-    <h2>Identifikátor českých mincí</h2>
-    <p>Umístěte rok mince do čtverce a vyfoťte ji.</p>
+    <h1>Mincovní Skener</h1>
+    <p>Zamiřte na <strong>rok ražby</strong> a stiskněte tlačítko</p>
 
     <div id="video-container">
-        <video id="webcam" autoplay playsinline></video>
-        <div class="overlay"></div>
+        <video id="video" autoplay playsinline></video>
+        <div id="line" class="scanner-line"></div>
     </div>
 
-    <button onclick="analyzujMinci()">Analyzovat minci</button>
+    <button id="btn" onclick="analyzuj()">SKENOVAT MINCI</button>
+    <canvas id="canvas"></canvas>
 
-    <div id="vysledek"></div>
+    <div id="vysledek">Zde se zobrazí výsledek...</div>
 
     <script>
-        const video = document.getElementById('webcam');
-        const vysledekDiv = document.getElementById('vysledek');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const vysledek = document.getElementById('vysledek');
+        const btn = document.getElementById('btn');
+        const line = document.getElementById('line');
 
-        // Přístup ke kameře
-        async function setupCamera() {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            video.srcObject = stream;
-        }
+        // Databáze vzácných českých mincí (zjednodušená pro demo)
+        const vzacneMince = {
+            "1993": "U 10 Kč hledejte variantu s malým 'Kč' (vysoká cena!). U 20 Kč existují varianty s jinou maticí.",
+            "1994": "10 Kč a 20 Kč z tohoto roku jsou v oběhu méně časté.",
+            "1995": "2 Kč a 50 Kč jsou v tomto ročníku sběratelsky zajímavější.",
+            "2000": "10 Kč a 20 Kč s motivem milénia (astroláb) jsou běžné, ale verze bez nich jsou vzácnější.",
+            "2005": "Všechny nominály z roku 2005 jsou vzácné (raženy převážně pro sady).",
+            "2024": "Nové ražby, sledujte kvalitu provedení."
+        };
 
-        function analyzujMinci() {
-            vysledekDiv.style.display = "block";
-            vysledekDiv.innerHTML = "<em>Probíhá analýza obrazu...</em>";
+        // Aktivace kamery
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(stream => { video.srcObject = stream; })
+            .catch(err => { vysledek.innerHTML = "Chyba kamery: " + err; });
 
-            // ZDE BY NÁSLEDOVALA LOGIKA PRO OCR (Tesseract.js)
-            // Pro ukázku simulujeme výsledek:
-            setTimeout(() => {
-                const simulovanyRok = 1993;
-                const simulovanaHodnota = 10;
+        async function analyzuj() {
+            btn.disabled = true;
+            line.style.display = "block";
+            vysledek.className = "";
+            vysledek.innerHTML = "💡 Čtu ročník z mince...";
 
-                if (simulovanaHodnota === 10 && simulovanyRok === 1993) {
-                    vysledekDiv.className = "vzacna";
-                    vysledekDiv.innerHTML = "<strong>POZOR!</strong> Nalezena 10 Kč (1993). Pokud má malé 'Kč', může mít vysokou hodnotu!";
+            // Vyfocení snímku
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            try {
+                // OCR analýza pomocí Tesseract.js
+                const result = await Tesseract.recognize(canvas, 'eng', {
+                    logger: m => console.log(m) 
+                });
+                
+                // Hledání 4místného čísla (roku) v textu
+                const text = result.data.text;
+                const match = text.match(/\b(199[0-9]|20[0-2][0-9])\b/);
+
+                if (match) {
+                    const rok = match[0];
+                    if (vzacneMince[rok]) {
+                        vysledek.className = "vzacna";
+                        vysledek.innerHTML = `<strong>Nalezen rok ${rok}!</strong><br>${vzacneMince[rok]}`;
+                    } else {
+                        vysledek.className = "bezna";
+                        vysledek.innerHTML = `Nalezen rok ${rok}.<br>Jde o běžný ročník v oběhu.`;
+                    }
                 } else {
-                    vysledekDiv.className = "bezna";
-                    vysledekDiv.innerHTML = `Identifikována běžná ${simulovanaHodnota} Kč, ročník ${simulovanyRok}.`;
+                    vysledek.innerHTML = "Nepodařilo se jasně přečíst rok. Zkuste to z jiného úhlu nebo lépe zaostřete.";
                 }
-            }, 1500);
+            } catch (e) {
+                vysledek.innerHTML = "Chyba při zpracování obrazu.";
+            } finally {
+                btn.disabled = false;
+                line.style.display = "none";
+            }
         }
-
-        setupCamera();
     </script>
 </body>
 </html>
